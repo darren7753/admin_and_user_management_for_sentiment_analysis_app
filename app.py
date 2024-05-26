@@ -5,6 +5,7 @@ import pickle
 import time
 import plotly.graph_objs as go
 import os
+import calendar
 
 from wordcloud import WordCloud
 from collections import Counter
@@ -363,6 +364,59 @@ def access_management_page_user():
                 time.sleep(3)
                 message_error.empty()
 
+# Halaman Report
+def report_page():
+    st.subheader("Report Dataset Komentar Youtube Honda")
+
+    report_data = pd.read_excel("Klarifikasi_Kemunculan_Warna_Kuning_Pada_Rangka_Honda.xlsx")
+    report_data["pubdate"] = pd.to_datetime(report_data["pubdate"])
+
+    col1, col2 = st.columns(2)
+    with col1:
+        year_filter = st.selectbox(
+            "Tahun",
+            np.sort(report_data["pubdate"].dt.year.unique()),
+            placeholder="Pilih Tahun",
+            index=None
+        )
+
+    with col2:
+        if year_filter:
+            year_filtered_report_data = report_data[
+                report_data["pubdate"].dt.year == year_filter
+            ].reset_index(drop=True)
+
+            unique_months = np.sort(year_filtered_report_data["pubdate"].dt.month.unique())
+            month_names = [calendar.month_name[month] for month in unique_months]
+
+            month_filter = st.selectbox(
+                "Bulan",
+                month_names,
+                placeholder="Pilih Bulan",
+                index=None
+            )
+
+            if month_filter:
+                month_number = {name: num for num, name in enumerate(calendar.month_name) if num in unique_months}[month_filter]
+
+                year_month_filtered_report_data = year_filtered_report_data[
+                    year_filtered_report_data["pubdate"].dt.month == month_number
+                ].reset_index(drop=True)
+        else:
+            month_filter = st.selectbox(
+                "Bulan",
+                ["Pilih tahun terlebih dahulu"],
+                placeholder="Pilih Bulan",
+                index=None
+            )
+
+    if year_filter and month_filter:
+        st.dataframe(year_month_filtered_report_data, use_container_width=True)
+    elif year_filter:
+        st.dataframe(year_filtered_report_data, use_container_width=True)
+    else:
+        st.dataframe(report_data, use_container_width=True)
+
 # Session State untuk Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -380,6 +434,10 @@ else:
 
         menu_title = "Menu Admin" if user_access == "Admin" else "Menu User"
         menu_options = ["About", "Predict Text", "Predict DataFrame", "Access Management"]
+
+        if user_access == "Admin":
+            menu_options.append("Report")
+
         option = option_menu(
             menu_title,
             menu_options,
@@ -408,3 +466,5 @@ else:
             access_management_page_admin()
         else:
             access_management_page_user()
+    else:
+        report_page()
